@@ -1,0 +1,24 @@
+{
+  "name": "mindspero",
+  "version": "1.0.0",
+  "description": "AI-powered education platform with lecture note processing",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^13.5.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@supabase/supabase-js": "^2.38.5",
+    "axios": "^1.6.2",
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.11.0",
+    "pdf-lib": "^1.17.1",
+    "google-tts-api": "^2.0.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "ffmpeg-static": "^5.2.0"
+  }
+}
