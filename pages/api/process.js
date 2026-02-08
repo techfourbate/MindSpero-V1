@@ -62,8 +62,14 @@ const callOpenAIWithRetry = async (text, maxRetries = 2) => {
 
       return response.data.choices[0].message.content;
     } catch (error) {
-      if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      if (error.response?.status === 429) {
+        console.warn(`Rate limit hit (429). Retrying after ${2 * (i + 1)} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1))); // Wait 2s, then 4s
+      } else if (i === maxRetries - 1) {
+        throw error;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
     }
   }
 };
@@ -85,35 +91,68 @@ const simplifyText = async (text) => {
   return finalSimplified;
 };
 
-const generateTtsBuffer = async (text) => {
-  const chunks = [];
-  const textChunks = text.match(/[^.!?]*[.!?]+/g) || [text];
+const generateAudioScript = async (text) => {
+  // We process in chunks but with a different prompt for audio
+  const chunks = splitTextByChars(text, 1500);
+  const scriptChunks = [];
 
-  let currentChunk = '';
-  for (const sentence of textChunks) {
-    if ((currentChunk + sentence).length > 2000) {
-      if (currentChunk) chunks.push(currentChunk);
-      currentChunk = sentence;
-    } else {
-      currentChunk += sentence;
-    }
+  for (const chunk of chunks) {
+    const scriptPart = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an engaging AI Audio Tutor. Convert the provided academic text into a lively, spoken-word script. Use rhetorical questions, analogies, and direct address ("Now, let s look at...") to keep the student listening. Do not use headers or bullet points, just natural speech flow.',
+          },
+          {
+            role: 'user',
+            content: `Convert this text into a spoken tutor script:\n\n${chunk}`,
+          },
+        ],
+        temperature: 0.7, // Higher temp for more dynamic speech
+      },
+      {
+        headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
+      }
+    );
+    scriptChunks.push(scriptPart.data.choices[0].message.content);
   }
-  if (currentChunk) chunks.push(currentChunk);
 
+  return scriptChunks.join(' ');
+};
+
+const generateTtsBuffer = async (text) => {
+  // OpenAI TTS has a 4096 character limit. Safe buffer of 4000.
+  const chunks = splitTextByChars(text, 4000);
   const buffers = [];
+
   for (const chunk of chunks) {
     try {
-      const response = await axios.get(
-        `https://api.google-tts-api.com/audio?text=${encodeURIComponent(chunk)}&lang=en`,
-        { responseType: 'arraybuffer', timeout: 10000 }
+      const response = await axios.post(
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: chunk,
+          voice: 'alloy',
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'arraybuffer',
+        }
       );
       buffers.push(Buffer.from(response.data));
-    } catch {
+    } catch (error) {
+      console.error('OpenAI TTS Error:', error.message);
     }
   }
 
   if (buffers.length === 0) {
-    return Buffer.concat([Buffer.from('ID3')]);
+    return Buffer.concat([Buffer.from('ID3')]); // Return minimal valid MP3 header or empty
   }
 
   return Buffer.concat(buffers);
@@ -173,16 +212,19 @@ export default async function handler(req, res) {
 
   const { filePath, fileName } = req.body;
 
-  try {
-    const user = await supabaseAdmin.auth.admin.getUserById(
-      req.headers['x-user-id'] || ''
-    );
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  }
 
-    if (!user?.data?.user?.id) {
+  try {
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = user.data.user.id;
+    const userId = user.id;
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
@@ -211,7 +253,9 @@ export default async function handler(req, res) {
     let extractedText = '';
 
     if (fileName.endsWith('.pdf')) {
-      const pdf = await pdfParse(fileData);
+      // pdf-parse expects a Node.js Buffer
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      const pdf = await pdfParse(buffer);
       extractedText = pdf.text;
     } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
       const docxResult = await mammoth.extractRawText({ arrayBuffer: await fileData.arrayBuffer() });
@@ -227,9 +271,10 @@ export default async function handler(req, res) {
     }
 
     const simplifiedText = await simplifyText(extractedText);
+    const tutorScript = await generateAudioScript(simplifiedText); // Create engaging script based on simplified concepts
 
     const pdfBuffer = await generatePdf(simplifiedText);
-    const audioBuffer = await generateTtsBuffer(simplifiedText);
+    const audioBuffer = await generateTtsBuffer(tutorScript);
 
     const timestamp = Date.now();
     const pdfPath = `${userId}/output-${timestamp}.pdf`;

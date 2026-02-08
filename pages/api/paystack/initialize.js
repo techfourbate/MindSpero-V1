@@ -14,10 +14,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = authHeader.split(' ')[1];
-    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.admin.getUserById(
-      token.split('.')[1]
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !authUser) {
       return res.status(401).json({ error: 'Unauthorized' });

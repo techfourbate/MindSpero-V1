@@ -38,7 +38,8 @@ export default function Signup() {
           setError('');
           setTimeout(() => router.push('/dashboard'), 1000);
         } else {
-          setError('Failed to create profile. Please try again.');
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.error || 'Failed to create profile. Please contact support.');
         }
       }
     } catch (err) {

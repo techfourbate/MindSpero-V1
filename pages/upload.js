@@ -21,18 +21,20 @@ export default function Upload() {
     setUploading(true);
 
     try {
-      const user = await supabase.auth.getUser();
-      if (!user?.data?.user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         setError('You must be logged in');
         setUploading(false);
         return;
       }
 
+      const user = session.user;
+
       setStatus('Uploading file...');
       const fileName = `${Date.now()}-${file.name}`;
       const { data, error: uploadError } = await supabase.storage
         .from('notes')
-        .upload(`${user.data.user.id}/${fileName}`, file);
+        .upload(`${user.id}/${fileName}`, file);
 
       if (uploadError) {
         setError(uploadError.message);
@@ -43,7 +45,10 @@ export default function Upload() {
       setStatus('Processing your notes...');
       const res = await fetch('/api/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           filePath: data.path,
           fileName: file.name,
@@ -54,7 +59,8 @@ export default function Upload() {
         setStatus('Processing complete! Redirecting...');
         setTimeout(() => router.push('/dashboard'), 2000);
       } else {
-        setError('Processing failed. Please try again.');
+        const errorData = await res.json().catch(() => ({}));
+        setError(errorData.error || 'Processing failed. Please try again.');
         setUploading(false);
       }
     } catch (err) {
