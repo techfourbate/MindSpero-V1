@@ -95,6 +95,38 @@ export default function Login() {
           >
             {loading ? 'Logging In...' : 'Log In'}
           </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setLoading(true);
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+              });
+              if (error) {
+                setError(error.message);
+                setLoading(false);
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: 'white',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              marginTop: '1rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20 }} />
+            Sign in with Google
+          </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', color: '#64748b' }}>

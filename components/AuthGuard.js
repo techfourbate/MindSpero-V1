@@ -24,10 +24,27 @@ export default function AuthGuard({ children }) {
         getInitialSession();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (mounted) {
                 setSession(session);
                 setLoading(false);
+
+                // Auto-create profile for OAuth users (like Google) if they don't have one
+                if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (!profile) {
+                        await fetch('/api/createProfile', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: session.user.id, email: session.user.email }),
+                        });
+                    }
+                }
             }
         });
 
