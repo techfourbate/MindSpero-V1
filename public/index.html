@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpero - AI Study Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <nav>
+        <div class="logo">MindSpero.</div>
+        <div class="nav-links">
+            <button id="themeToggle" class="btn btn-outline" style="padding: 0.4rem 0.6rem; border-radius: 50%; font-size: 1.1rem; border: none;">☀️</button>
+            <a href="./login.html" class="btn btn-outline">Sign In</a>
+            <a href="./register.html" class="btn btn-primary">Start Trial</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Master Your Lectures in Seconds</h1>
+            <p>Upload your messy PDFs or notes. We convert them into simple explanations, key revision points, exam Q&A, and natural audio lectures.</p>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <a href="./register.html" class="btn btn-primary" style="font-size: 1.2rem; padding: 1rem 2rem;">Get Started Free</a>
+            </div>
+            <div style="margin-top: 4rem;">
+                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1000" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.5);" alt="Dashboard Mockup">
+            </div>
+        </section>
+    </main>
+
+    <footer style="text-align: center; padding: 2rem; color: var(--text-muted); border-top: 1px solid var(--border);">
+        <p>&copy; 2026 MindSpero. All rights reserved.</p>
+    </footer>
+
+    <script src="./js/theme.js"></script>
+    <script src="./js/auth.js"></script>
+    <script>
+        if (localStorage.getItem('token')) {
+            window.location.href = './dashboard.html';
+        }
+    </script>
+</body>
+</html>

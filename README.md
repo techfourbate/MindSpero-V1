@@ -1,109 +1,55 @@
-# MindSpero: AI-Powered EdTech Platform
+# MindSpero - Setup & Documentation
 
-Transform lecture notes into simplified PDFs and audio lessons with AI-powered processing.
+## Core Technologies
+- **Backend:** Node.js (Express.js)
+- **Database:** MySQL
+- **Frontend:** Vanilla JS, HTML, Custom CSS
+- **AI Processing:** OpenAI SDK (JSON structured output mode) + TTS Audio
+- **Payments:** Flutterwave APIs
 
-## Features
+## 🚀 Setup Instructions
 
-- **User Authentication**: Email/password signup with automatic 30-day trial
-- **File Upload**: Support for PDF, DOCX, and TXT files
-- **AI Processing**: OpenAI GPT-4o-mini simplification with intelligent chunking
-- **PDF Generation**: Create clean, readable PDFs from simplified notes
-- **Audio Generation**: Multi-chunk TTS with MP3 stitching via ffmpeg
-- **Payment Integration**: Paystack for GHS 30/month or GHS 300/year subscriptions
-- **Professional UI**: Modern blue theme with responsive design
+### 1. Database
+You must create a local MySQL database named `mindspero`. Run the provided script from your command line:
 
-## Quick Start
-
-### Prerequisites
-- Node.js 18+
-- npm/yarn
-- ffmpeg installed on system
-
-### Installation
-
-1. Clone and install:
-   ```bash
-   npm install
-   ```
-
-2. Set up environment variables (copy and fill):
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Add your keys:
-   - Supabase (project URL, anon key, service role key)
-   - OpenAI API key
-   - Paystack (secret key, public key, webhook secret)
-
-3. Run dev server:
-   ```bash
-   npm run dev
-   ```
-   Visit http://localhost:3000
-
-## Database Schema
-
-### Profiles Table
-```sql
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY,
-  email TEXT,
-  trial_start_date TIMESTAMP,
-  trial_end_date TIMESTAMP,
-  bonus_trial_end_date TIMESTAMP,
-  subscription_plan TEXT,
-  subscription_end_date TIMESTAMP,
-  created_at TIMESTAMP
-);
-```
-
-### Notes Table
-```sql
-CREATE TABLE notes (
-  id UUID PRIMARY KEY,
-  user_id UUID,
-  original_path TEXT,
-  extracted_text TEXT,
-  simplified_text TEXT,
-  output_pdf_path TEXT,
-  audio_path TEXT,
-  status TEXT,
-  created_at TIMESTAMP
-);
-```
-
-## Deployment
-
-### Vercel (Recommended)
 ```bash
-npm install -g vercel
-vercel
+mysql -u root -p < database/schema.sql
 ```
 
-### Important: ffmpeg Dependency
-Install ffmpeg on your deployment platform (Vercel buildpack or buildpacks).
+### 2. Environment Variables
+Open the `.env` file in the root folder and configure the following parameters:
+- `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- `OPENAI_API_KEY`: Get this from your OpenAI developer portal.
+- `FLW_SECRET_KEY`: Get your secret key from your Flutterwave dashboard.
 
-## API Endpoints
+### 3. Running the Server
 
-### Processing
-- `POST /api/process` - Upload and process notes
+Make sure the project dependencies are fully installed (we ran `npm install` automatically, but you can retry if needed):
+```bash
+npm install
+```
 
-### Payments
-- `POST /api/paystack/initialize` - Start payment
-- `POST /api/paystack/verify` - Verify transaction
-- `POST /api/paystackWebhook` - Webhook for Paystack
+Start the primary server:
+```bash
+node server.js
+```
 
-### Auth
-- `POST /api/createProfile` - Create new user profile
+### 4. Viewing the Application
+The app will be accessible at: **http://localhost:3000**
+- `/` - Landing page
+- `/register.html` - Trial account creation
+- `/login.html` - User login
+- `/dashboard.html` - Core study application (requires authentication)
 
-## Architecture
+If you have payment callbacks returning, they are caught by `/dashboard.html` via search queries (e.g. `?payment=verify&transaction_id=XYZ`).
 
-- **Frontend**: Next.js 13 with React 18
-- **Backend**: Next.js API routes
-- **Database**: Supabase PostgreSQL
-- **File Storage**: Supabase Storage
-- **AI**: OpenAI GPT-4o-mini
-- **TTS**: google-tts-api
-- **Audio Processing**: ffmpeg-static + fluent-ffmpeg
-- **Payments**: Paystack
+## Architecture Details
+
+- **PDF Parsing:** Uses `pdf-parse` to convert messy PDF structures into raw text.
+- **AI Explanation & Organization:** We pass the text into the `gpt-4o-mini` API forcing a strict `json_object` format to extract exactly:
+  1. *Explanation*
+  2. *Revision Key Points*
+  3. *Exam QA*
+  4. *Audio Script*
+- **Text-to-Speech:** Converting the *Audio Script* into a playable mp3 via the `/api/nlp/audio` route and storing it dynamically using OpenAI's `tts-1` `alloy` model.
+- **Access Control:** User states are checked. If their 7-day trial expires, they are forced to upgrade before accessing further AI extraction tools via strict Express middlewares.
