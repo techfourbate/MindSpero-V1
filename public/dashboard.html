@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MindSpero</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .sidebar { background: var(--surface); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+        .main-content { background: var(--surface); padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border); }
+        .stat-badge { display: inline-block; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background: var(--ring); color: var(--primary); margin-top: 0.5rem; }
+        .expired-badge { background: #fee2e2; color: #ef4444; }
+        
+        .history-item { padding: 1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
+        .history-item:hover { background: rgba(255,255,255,0.05); }
+        .history-item.active { border-left: 3px solid var(--primary); background: rgba(79, 70, 229, 0.1); }
+        
+        /* Loading Overlay */
+        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.8); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+        .loading-spinner { border: 4px solid var(--border); border-top: 4px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        
+        /* Audio Player Styling */
+        audio { width: 100%; margin-top: 1rem; border-radius: 8px; }
+        
+        /* Plan Cards */
+        .plans { display: flex; gap: 1rem; margin-top: 1rem; }
+        .plan-card { border: 1px solid var(--border); padding: 1.5rem; text-align: center; border-radius: var(--radius); cursor: pointer; flex: 1; transition: 0.2s; }
+        .plan-card:hover { border-color: var(--primary); }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">MindSpero.</div>
+        <div class="nav-links">
+            <button id="themeToggle" class="btn btn-outline" style="padding: 0.4rem 0.6rem; border-radius: 50%; font-size: 1.1rem; border: none;">☀️</button>
+            <button onclick="logout()" class="btn btn-outline">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container dashboard-grid">
+        <aside class="sidebar">
+            <h3>My Study Portal</h3>
+            <div id="userInfo" style="margin-top: 1rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem;" id="userEmail">Loading...</p>
+                <div id="subStatus" class="stat-badge">Checking Status...</div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0;">
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="showUploadView()">+ New Document</button>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="showSubscriptionModal()">Upgrade Plan</button>
+
+            <h4 style="margin-top: 2rem; margin-bottom: 1rem;">Recent Documents</h4>
+            <div id="historyList" style="max-height: 400px; overflow-y: auto;">
+                <!-- History Items go here -->
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Upload View -->
+            <div id="uploadView">
+                <h2>Upload Notes</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Upload a PDF or paste text to generate simple AI explanations.</p>
+                
+                <div class="upload-box" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <svg style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <h4>Click or drag PDF here</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">Max file size 5MB</p>
+                    <input type="file" id="fileInput" accept="application/pdf" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+
+                <div style="text-align: center; margin: 2rem 0; color: var(--text-muted);">OR</div>
+
+                <div class="form-group">
+                    <label>Paste Text Manually</label>
+                    <textarea id="textInput" class="form-input" rows="6" placeholder="Paste your lecture notes here..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;" onclick="submitNotes()">Process Notes Magic ✨</button>
+                <div id="uploadError" style="color: #ef4444; margin-top: 1rem;" class="hidden"></div>
+            </div>
+
+            <!-- Result View -->
+            <div id="resultView" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <h2 id="resFilename">Document Results</h2>
+                    <button class="btn btn-outline" onclick="showUploadView()">Back</button>
+                </div>
+
+                <div id="audioSection" style="margin-top: 1.5rem; background: var(--bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <h4 style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        🎧 Audio Lecture
+                    </h4>
+                    <div id="audioPlayerContainer">
+                        <button class="btn btn-primary" style="font-size: 0.9rem;" id="generateAudioBtn" onclick="generateAudioForCurrent()">Generate Audio Format</button>
+                    </div>
+                </div>
+
+                <div class="result-section">
+                    <div class="result-tab-btns">
+                        <button class="tab-btn active" onclick="switchTab('explanation')">Simple Explanation</button>
+                        <button class="tab-btn" onclick="switchTab('keypoints')">Key Revision Points</button>
+                        <button class="tab-btn" onclick="switchTab('examqa')">Exam Q&A</button>
+                    </div>
+
+                    <div id="tab-explanation" class="tab-content active"></div>
+                    <div id="tab-keypoints" class="tab-content"></div>
+                    <div id="tab-examqa" class="tab-content"></div>
+                </div>
+            </div>
+
+            <!-- Subscription Overlay -->
+            <div id="subView" class="hidden">
+                <h2>Upgrade Your Plan</h2>
+                <p style="color: var(--text-muted);">Unlock unlimited uploads and audio generation features.</p>
+
+                <div class="plans">
+                    <div class="plan-card" onclick="initPayment('monthly')">
+                        <h3>Monthly</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin: 1rem 0;">$10<span style="font-size: 1rem; color: var(--text-muted); font-weight: normal;">/mo</span></p>
+                        <button class="btn btn-primary" style="width: 100%;">Subscribe Monthly</button>
+                    </div>
+                    <div class="plan-card" onclick="initPayment('yearly')" style="border-color: var(--primary); background: rgba(79, 70, 229, 0.05);">
+                        <div style="background: var(--primary); color: #fff; font-size: 0.8rem; padding: 0.2rem; border-radius: 4px; display: inline-block; margin-bottom: 0.5rem;">Save 16%</div>
+                        <h3>Yearly</h3>
+                        <p style="font-size: 2rem; font-weight: bold; margin: 1rem 0;">$100<span style="font-size: 1rem; color: var(--text-muted); font-weight: normal;">/yr</span></p>
+                        <button class="btn btn-primary" style="width: 100%;">Subscribe Yearly</button>
+                    </div>
+                </div>
+                <button class="btn btn-outline" style="margin-top: 2rem;" onclick="showUploadView()">Cancel</button>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p style="margin-top: 1rem; font-weight: 500;" id="loadingText">Processing notes... This can take up to 30s</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="./js/theme.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/main.js"></script>
+</body>
+</html>
