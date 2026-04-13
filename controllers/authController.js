@@ -12,16 +12,16 @@ const register = async (req, res) => {
         if (existing.length > 0) return res.status(400).json({ message: 'User already exists' });
 
         const hashed = await bcrypt.hash(password, 10);
-        // Add 7 days trial
+        // Add 30 days trial
         const trialEnd = new Date();
-        trialEnd.setDate(trialEnd.getDate() + 7);
+        trialEnd.setDate(trialEnd.getDate() + 30);
 
         const [result] = await db.query(
             "INSERT INTO users (email, password, subscription_status, subscription_end) VALUES (?, ?, 'trial', ?)", 
             [email, hashed, trialEnd]
         );
 
-        res.status(201).json({ success: true, message: 'User registered successfully. Trial activated for 7 days.' });
+        res.status(201).json({ success: true, message: 'User registered successfully. Trial activated for 30 days.' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: 'Server error' });

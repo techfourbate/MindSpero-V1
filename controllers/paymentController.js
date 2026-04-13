@@ -9,7 +9,7 @@ const initializePayment = async (req, res) => {
         const userId = req.userId;
         const { plan } = req.body; // 'monthly' or 'yearly'
         
-        const amount = plan === 'yearly' ? 100 : 10;
+        const amount = plan === 'yearly' ? 300 : 30;
         const txRef = `tx-${userId}-${Date.now()}`;
 
         const [users] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
@@ -22,7 +22,8 @@ const initializePayment = async (req, res) => {
             'https://api.paystack.co/transaction/initialize',
             {
                 email: email,
-                amount: amount * 100, // Paystack amount is in kobo/cents
+                amount: amount * 100, // Paystack amount is in kobo/cents/pesewas
+                currency: "GHS",
                 reference: txRef,
                 callback_url: "http://localhost:3000/dashboard.html?payment=verify"
             },

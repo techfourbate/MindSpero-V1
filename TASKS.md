@@ -22,3 +22,7 @@
 ## 6. Deployment Readiness
 * **Server Setup:** Prepare the application to be deployed on an actual server (like an Ubuntu VPS on DigitalOcean or AWS) instead of XAMPP.
 * **Production Tools:** Implement `PM2` (so the Node server auto-restarts if it crashes) and configure `Nginx` as a reverse proxy with Let's Encrypt SSL certificates to host the app over secure HTTPS.
+
+
+## 7. Review Section Implementation
+## 8. Points Implementation

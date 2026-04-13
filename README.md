@@ -52,4 +52,4 @@ If you have payment callbacks returning, they are caught by `/dashboard.html` vi
   3. *Exam QA*
   4. *Audio Script*
 - **Text-to-Speech:** Converting the *Audio Script* into a playable mp3 via the `/api/nlp/audio` route and storing it dynamically using OpenAI's `tts-1` `alloy` model.
-- **Access Control:** User states are checked. If their 7-day trial expires, they are forced to upgrade before accessing further AI extraction tools via strict Express middlewares.
+- **Access Control:** User states are checked. If their 30-day trial expires, they are forced to upgrade before accessing further AI extraction tools via strict Express middlewares.
