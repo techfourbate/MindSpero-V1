@@ -200,13 +200,60 @@ function switchTab(tabId) {
 function showUploadView() {
     document.getElementById('resultView').classList.add('hidden');
     document.getElementById('subView').classList.add('hidden');
+    document.getElementById('accountView').classList.add('hidden');
     document.getElementById('uploadView').classList.remove('hidden');
 }
 
 function showSubscriptionModal() {
     document.getElementById('uploadView').classList.add('hidden');
     document.getElementById('resultView').classList.add('hidden');
+    document.getElementById('accountView').classList.add('hidden');
     document.getElementById('subView').classList.remove('hidden');
+}
+
+async function showAccountView() {
+    document.getElementById('uploadView').classList.add('hidden');
+    document.getElementById('resultView').classList.add('hidden');
+    document.getElementById('subView').classList.add('hidden');
+    document.getElementById('accountView').classList.remove('hidden');
+
+    try {
+        const infoRes = await axios.get('/api/auth/me');
+        const user = infoRes.data.user;
+        const planText = user.subscription_plan ? (user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)) : 'Trial';
+        const expiry = user.subscription_end ? new Date(user.subscription_end).toLocaleDateString() : 'N/A';
+        
+        document.getElementById('accPlanName').innerText = planText;
+        document.getElementById('accExpiry').innerText = `Expires: ${expiry} (${user.subscription_status.toUpperCase()})`;
+        document.getElementById('accDocsCount').innerText = user.uploads_count || 0;
+        if(document.getElementById('profileEmail')) document.getElementById('profileEmail').value = user.email;
+
+        const histRes = await axios.get('/api/payment/history');
+        const tbody = document.getElementById('paymentHistoryTable');
+        tbody.innerHTML = '';
+        if (histRes.data.history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 1rem; text-align: center; color: var(--text-muted);">No payment history found.</td></tr>';
+            return;
+        }
+
+        histRes.data.history.forEach(tx => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border)';
+            tr.innerHTML = `
+                <td style="padding: 1rem;">${new Date(tx.created_at).toLocaleDateString()}</td>
+                <td style="padding: 1rem; font-family: monospace; font-size: 0.85rem;">${tx.tx_ref}</td>
+                <td style="padding: 1rem; font-weight: bold;">${tx.currency} ${tx.amount}</td>
+                <td style="padding: 1rem;">
+                    <span style="padding: 0.2rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); font-size: 0.8rem; color: ${tx.status==='successful' ? '#10b981' : (tx.status==='failed' ? '#ef4444' : '#f59e0b')}">
+                        ${tx.status.toUpperCase()}
+                    </span>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error("Failed to load account view", err);
+    }
 }
 
 async function initPayment(plan) {
@@ -220,6 +267,36 @@ async function initPayment(plan) {
         alert("Failed to initialize payment.");
     } finally {
         hideLoading();
+    }
+}
+
+async function updatePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const errEl = document.getElementById('passwordError');
+    const succEl = document.getElementById('passwordSuccess');
+    
+    errEl.classList.add('hidden');
+    succEl.classList.add('hidden');
+
+    if (!currentPassword || !newPassword) {
+        errEl.innerText = "Please fill in all fields.";
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const res = await axios.post('/api/auth/update-password', {
+            currentPassword,
+            newPassword
+        });
+        succEl.innerText = res.data.message;
+        succEl.classList.remove('hidden');
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+    } catch(err) {
+        errEl.innerText = err.response?.data?.message || "Failed to update password.";
+        errEl.classList.remove('hidden');
     }
 }
 

@@ -16,7 +16,7 @@
         }
         .stat-card h3 { color: var(--text-muted); font-size: 1rem; margin-bottom: 0.5rem; }
         .stat-card .value { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { text-align: left; padding: 1rem; border-bottom: 1px solid var(--border); }
@@ -35,13 +35,25 @@
 
     <div class="container">
         <h2>Overview</h2>
-        <div class="grid-3" style="margin-top: 1.5rem; margin-bottom: 3rem;">
+        <div class="grid-stats" style="margin-top: 1.5rem; margin-bottom: 3rem;">
             <div class="stat-card">
                 <h3>Total Users</h3>
                 <div class="value" id="totalUsers">0</div>
             </div>
             <div class="stat-card">
-                <h3>Documents Processed</h3>
+                <h3>Monthly Active</h3>
+                <div class="value" id="monthlySubs">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Yearly Active</h3>
+                <div class="value" id="yearlySubs">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Trial Users</h3>
+                <div class="value" id="trialSubs">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Documents</h3>
                 <div class="value" id="totalUploads">0</div>
             </div>
             <div class="stat-card">
@@ -50,19 +62,39 @@
             </div>
         </div>
 
-        <h2>Recent Users</h2>
+        <h2>User Subscriptions</h2>
         <div class="panel" style="margin-top: 1.5rem; overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Email</th>
+                        <th>Plan</th>
                         <th>Status</th>
+                        <th>Expiry Date</th>
                         <th>Joined At</th>
                     </tr>
                 </thead>
                 <tbody id="userTable">
-                    <tr><td colspan="4" style="text-align: center;">Loading...</td></tr>
+                    <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 style="margin-top: 3rem;">Recent Transactions</h2>
+        <div class="panel" style="margin-top: 1.5rem; overflow-x: auto; margin-bottom: 3rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Reference</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentTable">
+                    <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -91,6 +123,9 @@
                 const data = res.data;
                 
                 document.getElementById('totalUsers').innerText = data.stats.users;
+                document.getElementById('monthlySubs').innerText = data.stats.monthly;
+                document.getElementById('yearlySubs').innerText = data.stats.yearly;
+                document.getElementById('trialSubs').innerText = data.stats.trials;
                 document.getElementById('totalUploads').innerText = data.stats.uploads;
                 document.getElementById('totalRevenue').innerText = `$${parseFloat(data.stats.revenue).toFixed(2)}`;
 
@@ -98,19 +133,44 @@
                 tbody.innerHTML = '';
                 
                 if (data.recentUsers.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No users found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No users found.</td></tr>';
                 }
 
                 data.recentUsers.forEach(u => {
+                    const expiry = u.subscription_end ? new Date(u.subscription_end).toLocaleDateString() : 'N/A';
+                    const planText = u.plan ? (u.plan.charAt(0).toUpperCase() + u.plan.slice(1)) : 'Trial';
+                    const statusColor = u.status === 'active' ? '#10b981' : (u.status === 'expired' ? '#ef4444' : 'var(--text-muted)');
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${u.id}</td>
                         <td>${u.email}</td>
-                        <td><span style="padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--border); font-size: 0.8rem;">${u.status}</span></td>
+                        <td style="font-weight: 500;">${planText}</td>
+                        <td><span style="padding: 0.2rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${statusColor}; font-size: 0.8rem; font-weight: 500;">${u.status.toUpperCase()}</span></td>
+                        <td>${expiry}</td>
                         <td>${new Date(u.created_at).toLocaleDateString()}</td>
                     `;
                     tbody.appendChild(tr);
                 });
+
+                const ptbody = document.getElementById('paymentTable');
+                ptbody.innerHTML = '';
+                if (!data.recentPayments || data.recentPayments.length === 0) {
+                    ptbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No transactions found.</td></tr>';
+                } else {
+                    data.recentPayments.forEach(tx => {
+                        const statusColor = tx.status === 'successful' ? '#10b981' : (tx.status === 'failed' ? '#ef4444' : '#f59e0b');
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${tx.email}</td>
+                            <td style="font-family: monospace; font-size: 0.85rem;">${tx.tx_ref}</td>
+                            <td style="font-weight: bold;">${tx.currency} ${tx.amount}</td>
+                            <td><span style="padding: 0.2rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${statusColor}; font-size: 0.8rem; font-weight: 500;">${tx.status.toUpperCase()}</span></td>
+                            <td>${new Date(tx.created_at).toLocaleDateString()} ${new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                        `;
+                        ptbody.appendChild(tr);
+                    });
+                }
             } catch (err) {
                 if(err.response?.status === 401 || err.response?.status === 403) {
                     logoutAdmin();

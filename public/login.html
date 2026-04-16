@@ -31,6 +31,9 @@
                     <input type="password" id="password" class="form-input" required>
                 </div>
                 <div id="errorMsg" style="color: #ef4444; font-size: 0.9rem; margin-top: 0.5rem;" class="hidden"></div>
+                <div style="text-align: right; margin-top: 0.5rem;">
+                    <a href="./forgot-password.html" style="font-size: 0.85rem; color: var(--primary);">Forgot Password?</a>
+                </div>
                 
                 <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sign In</button>
             </form>
@@ -44,6 +47,16 @@
     <script src="./js/theme.js"></script>
     <script src="./js/auth.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('verified') === 'true') {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.classList.remove('hidden');
+                errorMsg.style.color = '#10b981'; // Success green
+                errorMsg.textContent = 'Email verified successfully! You can now log in.';
+            }
+        });
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;

@@ -33,7 +33,7 @@
                 <!-- Optional Checkbox for terms -->
                 
                 <div id="errorMsg" style="color: #ef4444; font-size: 0.9rem; margin-top: 0.5rem;" class="hidden"></div>
-                <div id="successMsg" style="color: #10b981; font-size: 0.9rem; margin-top: 0.5rem;" class="hidden">Account created! Redirecting to login...</div>
+                <div id="successMsg" style="color: #10b981; font-size: 0.9rem; margin-top: 0.5rem;" class="hidden">Account created! Please check your email to verify your account before logging in.</div>
 
                 <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Create Account</button>
             </form>
@@ -58,9 +58,6 @@
                 if (res.data.success) {
                     errorMsg.classList.add('hidden');
                     successMsg.classList.remove('hidden');
-                    setTimeout(() => {
-                        window.location.href = './login.html';
-                    }, 1500);
                 }
             } catch (err) {
                 successMsg.classList.add('hidden');

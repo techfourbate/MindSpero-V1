@@ -7,7 +7,12 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     trial_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     subscription_status ENUM('trial', 'active', 'expired') DEFAULT 'trial',
+    subscription_plan VARCHAR(50) DEFAULT 'trial',
     subscription_end TIMESTAMP NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_token VARCHAR(255) NULL,
+    reset_token VARCHAR(255) NULL,
+    reset_token_expiry DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
