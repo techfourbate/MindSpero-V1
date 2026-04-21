@@ -141,16 +141,69 @@ function viewDocument(id) {
     document.getElementById('tab-keypoints').appendChild(ul);
 
     // Render Exam QA
-    const qaList = Array.isArray(doc.examQA) ? doc.examQA : doc.exam_qa;
+    const parsedQA = Array.isArray(doc.examQA) ? doc.examQA : doc.exam_qa;
     let qaHtml = "";
-    qaList.forEach((qa, idx) => {
-        qaHtml += `
-            <div style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px;">
-                <strong>Q${idx+1}: ${qa.question}</strong>
-                <p style="margin-top: 0.5rem; color: var(--text-muted);">${qa.answer}</p>
-            </div>
-        `;
-    });
+
+    if (Array.isArray(parsedQA)) {
+        // Old format backward compatibility
+        parsedQA.forEach((qa, idx) => {
+            qaHtml += `
+                <div style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px;">
+                    <strong>Q${idx+1}: ${qa.question}</strong>
+                    <p style="margin-top: 0.5rem; color: var(--text-muted);">${qa.answer}</p>
+                </div>
+            `;
+        });
+    } else if (parsedQA && typeof parsedQA === 'object') {
+        // New format with enriched features
+        if (parsedQA.tldr) {
+            qaHtml += `
+                <div style="margin-bottom: 1.5rem; padding: 1rem; border-left: 4px solid var(--primary); background: rgba(79, 70, 229, 0.1); border-radius: 4px;">
+                    <strong>⚡ TL;DR Summary:</strong>
+                    <p style="margin-top: 0.5rem; color: var(--text-muted);">${parsedQA.tldr}</p>
+                </div>
+            `;
+        }
+        if (parsedQA.mnemonics && parsedQA.mnemonics.length > 0) {
+            qaHtml += `
+                <div style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px;">
+                    <strong>🧠 Memory Hacks (Mnemonics):</strong>
+                    <ul style="margin-top: 0.5rem; color: var(--text-muted); padding-left: 20px;">
+                        ${parsedQA.mnemonics.map(m => `<li style="margin-bottom: 0.5rem;">${m}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        if (parsedQA.shortQA && parsedQA.shortQA.length > 0) {
+            qaHtml += `<h4 style="margin-top: 2rem; margin-bottom: 1rem;">Written Exam Questions</h4>`;
+            parsedQA.shortQA.forEach((qa, idx) => {
+                qaHtml += `
+                    <div style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px;">
+                        <strong>Q${idx+1}: ${qa.question}</strong>
+                        <p style="margin-top: 0.5rem; color: var(--text-muted);">${qa.answer}</p>
+                    </div>
+                `;
+            });
+        }
+        if (parsedQA.mcq && parsedQA.mcq.length > 0) {
+            qaHtml += `<h4 style="margin-top: 2rem; margin-bottom: 1rem;">Multiple Choice Quiz (Self-Test)</h4>`;
+            parsedQA.mcq.forEach((mcq, idx) => {
+                qaHtml += `
+                    <div style="margin-bottom: 1.5rem; background: rgba(0,0,0,0.1); padding: 1rem; border-radius: 8px;">
+                        <strong>${idx+1}. ${mcq.question}</strong>
+                        <ul style="margin-top: 0.5rem; color: var(--text-muted); list-style-type: none; padding-left: 0;">
+                            ${mcq.options.map(opt => `<li style="margin-bottom: 0.3rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 4px;">${opt}</li>`).join('')}
+                        </ul>
+                        <details style="margin-top: 0.8rem; cursor: pointer; color: var(--primary);">
+                            <summary style="font-weight: bold; outline: none;">Reveal Answer</summary>
+                            <p style="margin-top: 0.5rem; color: #10b981; font-weight: 500;">Correct Answer: ${mcq.answer}</p>
+                        </details>
+                    </div>
+                `;
+            });
+        }
+    }
+    
     document.getElementById('tab-examqa').innerHTML = qaHtml;
 
     // Audio Section Handle
@@ -322,3 +375,47 @@ async function checkPaymentRedirect() {
 if(window.location.pathname.includes('dashboard.html')) {
     loadDashboard();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    if (dropZone && fileInput) {
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = 'var(--primary)';
+                dropZone.style.background = 'rgba(79, 70, 229, 0.1)';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.style.borderColor = '';
+                dropZone.style.background = '';
+            }, false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files && files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        }, false);
+    }
+});

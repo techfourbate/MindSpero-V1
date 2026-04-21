@@ -3,6 +3,9 @@ require('dotenv').config();
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_API_KEY?.startsWith('sk-scitely') 
+             ? 'https://api.scitely.com/v1' 
+             : (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'),
 });
 
 const processNotes = async (text) => {
@@ -18,16 +21,26 @@ const processNotes = async (text) => {
                     {
                         "explanation": "A simple, clear explanation like a lecturer teaching a student. Use simple language and analogize where possible.",
                         "keyPoints": "Bullet point revision notes. Easy to memorize. Provide as an array of strings.",
-                        "examQA": [
-                            {
-                                "question": "Likely exam question 1",
-                                "answer": "Structured answer 1"
-                            },
-                            {
-                                "question": "Likely exam question 2",
-                                "answer": "Structured answer 2"
-                            }
-                        ],
+                        "examQA": {
+                            "tldr": "A 1-2 sentence 'Too Long, Didn't Read' instant summary of the entire text.",
+                            "mnemonics": [
+                                "Create a clever acronym or mnemonic device to help memorize the hardest concept 1",
+                                "Provide mnemonic 2 if relevant"
+                            ],
+                            "shortQA": [
+                                {
+                                    "question": "Likely written exam question 1",
+                                    "answer": "Structured answer 1"
+                                }
+                            ],
+                            "mcq": [
+                                {
+                                    "question": "Multiple choice test question 1",
+                                    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+                                    "answer": "C) Option 3"
+                                }
+                            ]
+                        },
                         "audioScript": "A natural spoken script of the explanation. Conversational style suitable for Text-to-Speech."
                     }`
                 },

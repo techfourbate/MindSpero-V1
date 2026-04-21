@@ -4,6 +4,7 @@ const db = require('../config/db');
 require('dotenv').config();
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/email');
+const axios = require('axios');
 
 const register = async (req, res) => {
     try {
@@ -184,4 +185,63 @@ const updatePassword = async (req, res) => {
     }
 };
 
-module.exports = { register, login, me, verifyEmail, forgotPassword, resetPassword, updatePassword };
+const getGoogleConfig = (req, res) => {
+    res.json({ clientId: process.env.GOOGLE_CLIENT_ID });
+};
+
+const googleLogin = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: 'No token provided' });
+
+        const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
+        const { email, email_verified, aud } = response.data;
+
+        if (aud !== process.env.GOOGLE_CLIENT_ID) {
+            return res.status(400).json({ message: 'Invalid token audience' });
+        }
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        
+        let user;
+        if (users.length === 0) {
+            const randomPassword = crypto.randomBytes(16).toString('hex');
+            const hashed = await bcrypt.hash(randomPassword, 10);
+            
+            const trialEnd = new Date();
+            trialEnd.setDate(trialEnd.getDate() + 30);
+            
+            const [result] = await db.query(
+                "INSERT INTO users (email, password, subscription_status, subscription_end, is_verified) VALUES (?, ?, 'trial', ?, true)", 
+                [email, hashed, trialEnd]
+            );
+            
+            const [newUsers] = await db.query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+            user = newUsers[0];
+        } else {
+            user = users[0];
+            if (!user.is_verified) {
+                await db.query('UPDATE users SET is_verified = true, verification_token = NULL WHERE id = ?', [user.id]);
+            }
+        }
+
+        const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.status(200).json({ 
+            success: true, 
+            token: jwtToken, 
+            user: { 
+                id: user.id, 
+                email: user.email, 
+                status: user.subscription_status,
+                trial_start: user.trial_start,
+                subscription_end: user.subscription_end
+            } 
+        });
+    } catch (err) {
+        console.error('Google login error:', err.response?.data || err.message);
+        res.status(500).json({ success: false, message: 'Google authentication failed' });
+    }
+};
+
+module.exports = { register, login, me, verifyEmail, forgotPassword, resetPassword, updatePassword, getGoogleConfig, googleLogin };

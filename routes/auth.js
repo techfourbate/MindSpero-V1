@@ -7,6 +7,9 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/me', verifyToken, authController.me);
 
+router.get('/google-config', authController.getGoogleConfig);
+router.post('/google', authController.googleLogin);
+
 router.get('/verify/:token', authController.verifyEmail);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);

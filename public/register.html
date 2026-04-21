@@ -36,6 +36,14 @@
                 <div id="successMsg" style="color: #10b981; font-size: 0.9rem; margin-top: 0.5rem;" class="hidden">Account created! Please check your email to verify your account before logging in.</div>
 
                 <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Create Account</button>
+
+                <div style="display: flex; align-items: center; margin: 1.5rem 0; text-align: center;">
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color, #e5e7eb);">
+                    <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.9rem;">or</span>
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color, #e5e7eb);">
+                </div>
+                
+                <div id="googleBtnContainer" style="display: flex; justify-content: center;"></div>
             </form>
             <p style="margin-top: 2rem; font-size: 0.9rem; color: var(--text-muted);">
                 Already have an account? <a href="./login.html">Sign In</a>
@@ -65,6 +73,44 @@
                 errorMsg.textContent = err.response?.data?.message || 'Registration failed';
             }
         });
+
+        // Setup Google Sign In
+        axios.get('/api/auth/google-config').then(res => {
+            const clientId = res.data.clientId;
+            if(clientId) {
+                const script = document.createElement('script');
+                script.src = "https://accounts.google.com/gsi/client";
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+
+                window.handleGoogleRes = async (response) => {
+                    try {
+                        const verifyRes = await axios.post('/api/auth/google', { token: response.credential });
+                        if (verifyRes.data.success) {
+                            localStorage.setItem('token', verifyRes.data.token);
+                            window.location.href = './dashboard.html';
+                        }
+                    } catch (err) {
+                        const errorMsg = document.getElementById('errorMsg');
+                        errorMsg.classList.remove('hidden');
+                        successMsg.classList.add('hidden');
+                        errorMsg.textContent = err.response?.data?.message || 'Google signup failed';
+                    }
+                };
+
+                script.onload = () => {
+                    google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: handleGoogleRes
+                    });
+                    google.accounts.id.renderButton(
+                        document.getElementById("googleBtnContainer"),
+                        { theme: document.body.getAttribute('data-theme') === 'dark' ? "filled_black" : "outline", size: "large", text: "signup_with" }
+                    );
+                };
+            }
+        }).catch(err => console.error("Could not load google config", err));
     </script>
 </body>
 </html>

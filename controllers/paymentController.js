@@ -75,7 +75,14 @@ const verifyPayment = async (req, res) => {
             // amount comes back in kobo
             const daysToAdd = (data.amount / 100) >= 100 ? 365 : 30;
             const planName = daysToAdd === 365 ? 'yearly' : 'monthly';
-            const newEndDate = new Date();
+            
+            const [users] = await db.query('SELECT subscription_end FROM users WHERE id = ?', [userId]);
+            const currentEndDate = users.length > 0 && users[0].subscription_end ? new Date(users[0].subscription_end) : new Date();
+            
+            let newEndDate = new Date();
+            if (currentEndDate > new Date()) {
+                newEndDate = new Date(currentEndDate);
+            }
             newEndDate.setDate(newEndDate.getDate() + daysToAdd);
 
             await db.query('UPDATE users SET subscription_status = "active", subscription_plan = ?, subscription_end = ? WHERE id = ?', [planName, newEndDate, userId]);
@@ -121,7 +128,14 @@ const paystackWebhook = async (req, res) => {
                     
                     const daysToAdd = (data.amount / 100) >= 100 ? 365 : 30;
                     const planName = daysToAdd === 365 ? 'yearly' : 'monthly';
-                    const newEndDate = new Date();
+                    
+                    const [users] = await db.query('SELECT subscription_end FROM users WHERE id = ?', [userId]);
+                    const currentEndDate = users.length > 0 && users[0].subscription_end ? new Date(users[0].subscription_end) : new Date();
+                    
+                    let newEndDate = new Date();
+                    if (currentEndDate > new Date()) {
+                        newEndDate = new Date(currentEndDate);
+                    }
                     newEndDate.setDate(newEndDate.getDate() + daysToAdd);
                     
                     await db.query('UPDATE users SET subscription_status = "active", subscription_plan = ?, subscription_end = ? WHERE id = ?', [planName, newEndDate, userId]);
