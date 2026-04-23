@@ -73,7 +73,8 @@ const login = async (req, res) => {
                 email: user.email, 
                 status: user.subscription_status,
                 trial_start: user.trial_start,
-                subscription_end: user.subscription_end
+                subscription_end: user.subscription_end,
+                requires_password_change: !!user.requires_password_change
             } 
         });
     } catch (err) {
@@ -85,7 +86,7 @@ const login = async (req, res) => {
 // Simple endpoint to get current user info
 const me = async (req, res) => {
     try {
-        const [users] = await db.query('SELECT id, email, trial_start, subscription_status, subscription_end, subscription_plan FROM users WHERE id = ?', [req.userId]);
+        const [users] = await db.query('SELECT id, email, trial_start, subscription_status, subscription_end, subscription_plan, requires_password_change FROM users WHERE id = ?', [req.userId]);
         if (users.length === 0) return res.status(404).json({ message: 'User not found' });
         
         let user = users[0];
@@ -176,7 +177,7 @@ const updatePassword = async (req, res) => {
         if (!match) return res.status(400).json({ message: 'Incorrect current password' });
         
         const hashed = await bcrypt.hash(newPassword, 10);
-        await db.query('UPDATE users SET password = ? WHERE id = ?', [hashed, req.userId]);
+        await db.query('UPDATE users SET password = ?, requires_password_change = FALSE WHERE id = ?', [hashed, req.userId]);
         
         res.status(200).json({ success: true, message: 'Password updated successfully' });
     } catch(err) {

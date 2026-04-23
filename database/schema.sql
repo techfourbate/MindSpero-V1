@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     verification_token VARCHAR(255) NULL,
     reset_token VARCHAR(255) NULL,
     reset_token_expiry DATETIME NULL,
+    requires_password_change BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

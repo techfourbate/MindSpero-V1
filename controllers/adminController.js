@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const db = require('../config/db');
 
 const adminLogin = (req, res) => {
@@ -58,4 +60,52 @@ const getStats = async (req, res) => {
     }
 };
 
-module.exports = { adminLogin, getStats };
+const deleteUser = async (req, res) => {
+    try {
+        if (req.userRole !== 'admin') return res.status(403).send('Forbidden');
+        const userId = req.params.id;
+        if (!userId) return res.status(400).json({ message: 'User ID required' });
+        
+        await db.query('DELETE FROM users WHERE id = ?', [userId]);
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error deleting user' });
+    }
+};
+
+const addUser = async (req, res) => {
+    try {
+        if (req.userRole !== 'admin') return res.status(403).send('Forbidden');
+        const { email, password, plan } = req.body;
+        if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+        
+        const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+        if (existing.length > 0) return res.status(400).json({ message: 'User already exists' });
+        
+        const hashed = await bcrypt.hash(password, 10);
+        let subscription_status = 'active';
+        let trialEnd = new Date();
+        
+        if (!plan || plan === 'trial') {
+            subscription_status = 'trial';
+            trialEnd.setDate(trialEnd.getDate() + 30);
+        } else if (plan === 'monthly') {
+            trialEnd.setMonth(trialEnd.getMonth() + 1);
+        } else if (plan === 'yearly') {
+            trialEnd.setFullYear(trialEnd.getFullYear() + 1);
+        }
+
+        await db.query(
+            "INSERT INTO users (email, password, subscription_status, subscription_plan, subscription_end, is_verified, requires_password_change) VALUES (?, ?, ?, ?, ?, true, true)", 
+            [email, hashed, subscription_status, plan || 'trial', trialEnd]
+        );
+        
+        res.json({ success: true, message: 'User created successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error creating user' });
+    }
+};
+
+module.exports = { adminLogin, getStats, deleteUser, addUser };

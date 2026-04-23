@@ -62,7 +62,39 @@
             </div>
         </div>
 
-        <h2>User Subscriptions</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem;">
+            <h2 style="margin-top: 0;">User Subscriptions</h2>
+            <button class="btn btn-primary" onclick="document.getElementById('addUserModal').style.display='block'">+ Add User</button>
+        </div>
+
+        <!-- Add User Modal -->
+        <div id="addUserModal" style="display: none; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 1rem;">
+            <h3 style="margin-bottom: 1rem;">Add New User</h3>
+            <form id="addUserForm" onsubmit="handleAddUser(event)">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <label>Email</label>
+                        <input type="email" id="newEmail" class="form-input" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Password</label>
+                        <input type="password" id="newPassword" class="form-input" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Plan</label>
+                        <select id="newPlan" class="form-input">
+                            <option value="trial">Trial</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Create User</button>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('addUserModal').style.display='none'">Cancel</button>
+                <div id="addUserError" style="color: #ef4444; margin-top: 0.5rem;" class="hidden"></div>
+            </form>
+        </div>
+
         <div class="panel" style="margin-top: 1.5rem; overflow-x: auto;">
             <table>
                 <thead>
@@ -73,10 +105,11 @@
                         <th>Status</th>
                         <th>Expiry Date</th>
                         <th>Joined At</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="userTable">
-                    <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -149,6 +182,9 @@
                         <td><span style="padding: 0.2rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${statusColor}; font-size: 0.8rem; font-weight: 500;">${u.status.toUpperCase()}</span></td>
                         <td>${expiry}</td>
                         <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <button onclick="deleteUser(${u.id})" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; border-radius: 4px; padding: 0.2rem 0.5rem; cursor: pointer;">Delete</button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -177,6 +213,40 @@
                 } else {
                     alert('Error loading dashboard');
                 }
+            }
+        }
+
+        async function deleteUser(id) {
+            if(!confirm('Are you sure you want to completely delete this user and all their data?')) return;
+            try {
+                const res = await axios.delete('/api/admin/users/' + id);
+                if(res.data.success) {
+                    alert('User deleted successfully.');
+                    loadAdminDashboard(); // refresh stats
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Error deleting user');
+            }
+        }
+
+        async function handleAddUser(e) {
+            e.preventDefault();
+            const email = document.getElementById('newEmail').value;
+            const password = document.getElementById('newPassword').value;
+            const plan = document.getElementById('newPlan').value;
+            const errEl = document.getElementById('addUserError');
+            
+            errEl.classList.add('hidden');
+            try {
+                const res = await axios.post('/api/admin/users', { email, password, plan });
+                if(res.data.success) {
+                    document.getElementById('addUserForm').reset();
+                    document.getElementById('addUserModal').style.display = 'none';
+                    loadAdminDashboard(); // refresh stats
+                }
+            } catch (err) {
+                errEl.classList.remove('hidden');
+                errEl.textContent = err.response?.data?.message || 'Failed to create user';
             }
         }
 
